@@ -1,0 +1,36 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model TypeDefinition {
+  id     Int             @id @default(autoincrement())
+  name   String          @unique
+  fields FieldDefinition[]
+  rows   Row[]           // <-- Add this line to define the opposite relation
+}
+
+model FieldDefinition {
+  id         Int             @id @default(autoincrement())
+  name       String
+  typeId     Int
+  fieldType  String
+  TypeDefinition TypeDefinition @relation(fields: [typeId], references: [id])
+}
+
+model Row {
+  id             Int             @id @default(autoincrement())
+  typeId         Int
+  data           Json
+  TypeDefinition TypeDefinition  @relation(fields: [typeId], references: [id])
+}
