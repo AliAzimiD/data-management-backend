@@ -1,24 +1,23 @@
-import { Router, Request, Response, RequestHandler } from 'express';
+import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { PrismaClient } from '@prisma/client';
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// GET /api/types - Fetch all types
-const getTypesHandler: RequestHandler = async (req, res) => {
+// Explicitly specify generic types for RequestHandler
+const getTypesHandler: RequestHandler<{}, any, any, {}> = async (req, res, next) => {
   try {
     const types = await prisma.typeDefinition.findMany();
-    res.json(types); // No need to return the response explicitly
+    res.json(types);
   } catch (error) {
-    console.error('Error fetching types:', error);
-    res.status(500).json({ error: 'Failed to fetch types' });
+    next(error);
   }
 };
 
-// POST /api/types - Create a new type
-const createTypeHandler: RequestHandler = async (req, res) => {
+const createTypeHandler: RequestHandler<{}, any, { name: string }, {}> = async (req, res, next) => {
   try {
     const { name } = req.body;
+
     if (!name) {
       res.status(400).json({ error: 'Type name is required' });
       return;
@@ -30,12 +29,10 @@ const createTypeHandler: RequestHandler = async (req, res) => {
 
     res.status(201).json(newType);
   } catch (error) {
-    console.error('Error creating type:', error);
-    res.status(500).json({ error: 'Failed to create type' });
+    next(error);
   }
 };
 
-// Register routes
 router.get('/types', getTypesHandler);
 router.post('/types', createTypeHandler);
 

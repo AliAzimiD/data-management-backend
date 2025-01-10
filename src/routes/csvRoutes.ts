@@ -1,14 +1,14 @@
-import { Router, Request, Response } from 'express';
+import { Router, RequestHandler } from 'express';
 import multer from 'multer';
-import CSVService from '../services/CSVService';
 import path from 'path';
 import fs from 'fs';
+import CSVService from '../services/CSVService';
 
 const router = Router();
-const upload = multer({ dest: 'uploads/' }); // Temporary upload directory
+const upload = multer({ dest: 'uploads/' });
 
 // POST /api/import - Import rows from a CSV file
-router.post('/import', upload.single('file'), async (req: Request, res: Response) => {
+const importCSVHandler: RequestHandler = async (req, res, next) => {
   try {
     if (!req.file) {
       res.status(400).json({ error: 'No file uploaded' });
@@ -19,37 +19,37 @@ router.post('/import', upload.single('file'), async (req: Request, res: Response
 
     await CSVService.importCSV(filePath);
 
-    // Delete the uploaded file after processing
-    fs.unlinkSync(filePath);
+    fs.unlinkSync(filePath); // Clean up uploaded file after processing
 
     res.status(200).json({ message: 'CSV imported successfully' });
   } catch (error) {
-    console.error('Error importing CSV:', error);
-    res.status(500).json({ error: 'Failed to import CSV' });
+    next(error);
   }
-});
+};
 
 // GET /api/export?typeId={id} - Export rows to a CSV file
-router.get('/export', async (req: Request, res: Response) => {
+const exportCSVHandler: RequestHandler<{}, any, any, { typeId: string }> = async (req, res, next) => {
   try {
     const { typeId } = req.query;
+
     if (!typeId) {
       res.status(400).json({ error: 'Type ID is required' });
       return;
     }
 
-    const outputPath = path.join(__dirname, `exported-rows-${typeId}.csv`);
+    const exportPath = path.join(__dirname, `exported-rows-${typeId}.csv`);
 
-    await CSVService.exportToCSV(Number(typeId), outputPath);
+    await CSVService.exportToCSV(Number(typeId), exportPath);
 
-    res.download(outputPath, () => {
-      // Delete the file after download
-      fs.unlinkSync(outputPath);
+    res.download(exportPath, () => {
+      fs.unlinkSync(exportPath); // Clean up exported file after download
     });
   } catch (error) {
-    console.error('Error exporting CSV:', error);
-    res.status(500).json({ error: 'Failed to export CSV' });
+    next(error);
   }
-});
+};
+
+router.post('/import', upload.single('file'), importCSVHandler);
+router.get('/export', exportCSVHandler);
 
 export default router;
